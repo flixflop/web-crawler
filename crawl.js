@@ -35,13 +35,30 @@ function getURLsFromHTML(htmlBody, baseURL) {
 	return links
 };
 
-function crawlPage(currentURL) {
-	
+async function crawlPage(currentURL) {
+	// fetch and parse the HTML of the currentURL
+	console.log(`crawling ${currentURL}`)
+	try {
+		const response = await fetch(currentURL);
+		if (!response.ok) {
+			console.log(`HTTP error! Status: ${response.status}`);
+			return
+		}
+		const contentType = response.headers.get('Content-Type');
+		if (!contentType.includes('text/html')) {
+			console.log(`Expected HTML response, got ${contentType} instead.`)
+			return 
+		}
+		console.log(await response.text());
+	} catch (err) {
+		console.log(err.message);
+	}
 };
 
 
 module.exports = {
 	normalizeURL,
-	getURLsFromHTML
+	getURLsFromHTML,
+	crawlPage
 }
   
