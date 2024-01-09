@@ -20,39 +20,65 @@ function getURLsFromHTML(htmlBody, baseURL) {
 		let link = anchors[i].getAttribute('href')
 		if (link.startsWith('/')) {
 			try {
-			links.push(new URL(link, baseURL).href);
+				links.push(new URL(link, baseURL).href);
 			} catch (err) {
-				console.log(`${err.message}: ${anchors[i]}`);
+				console.log(`${err.message}: ${link}`);
 			}
 		} else {
 			try {
 				links.push(new URL(link).href);
 			} catch (err) {
-				console.log(`${err.message}: ${anchors[i]}`);
+				console.log(`${err.message}: ${link}`);
 			}
 		}
 	}
 	return links
 };
 
-async function crawlPage(currentURL) {
+async function crawlPage(baseURL, currentURL, pages) {
+	// check if we left the original site to crawl
+	const currentUrlObj = new URL(currentURL);
+	const baseUrlObj = new URL(baseURL);
+	if (baseUrlObj.hostname != currentUrlObj.hostname) {
+		return pages
+	}
+	const normalizedURL = normalizeURL(currentURL);
+	// if we've already visited this page
+	// just increase the count and don't repeat
+	// the http request
+	if (pages[normalizedURL] > 0){
+		pages[normalizedURL]++
+		return pages
+	}
+
+	// initialize this page in the map
+	// since it doesn't exist yet
+	pages[normalizedURL] = 1
 	// fetch and parse the HTML of the currentURL
 	console.log(`crawling ${currentURL}`)
+	let htmlBody = ''
 	try {
 		const response = await fetch(currentURL);
 		if (!response.ok) {
 			console.log(`HTTP error! Status: ${response.status}`);
-			return
+			return pages
 		}
 		const contentType = response.headers.get('Content-Type');
 		if (!contentType.includes('text/html')) {
 			console.log(`Expected HTML response, got ${contentType} instead.`)
-			return 
+			return pages
 		}
-		console.log(await response.text());
+		htmlBody = await response.text();
 	} catch (err) {
 		console.log(err.message);
 	}
+	const nextURLs = getURLsFromHTML(htmlBody, baseURL);
+	for (const nextURL of nextURLs){
+	  pages = await crawlPage(baseURL, nextURL, pages);
+	}
+  
+	return pages
+
 };
 
 
